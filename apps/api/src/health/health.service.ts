@@ -1,0 +1,17 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class HealthService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async check(): Promise<{ status: 'ok'; database: 'ok'; timestamp: string }> {
+    await this.prisma.$queryRaw`SELECT 1`;
+
+    return {
+      status: 'ok',
+      database: 'ok',
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
