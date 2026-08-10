@@ -17,6 +17,7 @@ const monitor = {
   targetUrl: 'https://api.orbit.test/health',
   interval: 60,
   status: 'PENDING' as const,
+  lastCheckedAt: null,
   createdAt,
   updatedAt,
 };
@@ -142,6 +143,19 @@ describe('MonitorsService', () => {
       new BadRequestException(
         'Monitor target URL must be a valid HTTP or HTTPS URL',
       ),
+    );
+    expect(prisma.monitor.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a target URL containing credentials', async () => {
+    await expect(
+      service.create(workspace.slug, userId, {
+        name: monitor.name,
+        targetUrl: 'https://user:secret@api.orbit.test/health',
+        interval: 60,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('Monitor target URL cannot contain credentials'),
     );
     expect(prisma.monitor.create).not.toHaveBeenCalled();
   });

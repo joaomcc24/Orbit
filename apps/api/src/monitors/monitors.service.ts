@@ -1,14 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import type { Monitor as PrismaMonitor } from '@prisma/client';
 import type {
   CreateMonitorRequest,
   CreateMonitorResponse,
   ListMonitorsResponse,
-  MonitorInterval,
-  MonitorSummary,
 } from '@orbit/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkspaceAccessService } from '../workspaces/workspace-access.service';
+import { toMonitorSummary } from './monitor.mapper';
 
 const allowedIntervals = new Set<number>([30, 60, 300]);
 
@@ -38,7 +36,7 @@ export class MonitorsService {
     });
 
     return {
-      monitor: this.toMonitorSummary(monitor),
+      monitor: toMonitorSummary(monitor),
     };
   }
 
@@ -58,7 +56,7 @@ export class MonitorsService {
     });
 
     return {
-      monitors: monitors.map((monitor) => this.toMonitorSummary(monitor)),
+      monitors: monitors.map(toMonitorSummary),
     };
   }
 
@@ -119,18 +117,12 @@ export class MonitorsService {
         'Monitor target URL must be a valid HTTP or HTTPS URL',
       );
     }
+
+    if (parsedUrl.username || parsedUrl.password) {
+      throw new BadRequestException(
+        'Monitor target URL cannot contain credentials',
+      );
+    }
   }
 
-  private toMonitorSummary(monitor: PrismaMonitor): MonitorSummary {
-    return {
-      id: monitor.id,
-      workspaceId: monitor.workspaceId,
-      name: monitor.name,
-      targetUrl: monitor.targetUrl,
-      interval: monitor.interval as MonitorInterval,
-      status: monitor.status,
-      createdAt: monitor.createdAt.toISOString(),
-      updatedAt: monitor.updatedAt.toISOString(),
-    };
-  }
 }

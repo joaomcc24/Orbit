@@ -44,7 +44,18 @@ export const MONITOR_INTERVALS = [30, 60, 300] as const;
 
 export type MonitorInterval = (typeof MONITOR_INTERVALS)[number];
 
-export type MonitorStatus = 'PENDING';
+export type MonitorStatus = 'PENDING' | 'UP' | 'DOWN';
+
+export type MonitorCheckResult = 'UP' | 'DOWN';
+
+export type MonitorCheckFailureReason =
+  | 'HTTP_STATUS'
+  | 'TIMEOUT'
+  | 'DNS'
+  | 'CONNECTION'
+  | 'TLS'
+  | 'REDIRECT'
+  | 'BLOCKED_TARGET';
 
 export type MonitorSummary = {
   id: string;
@@ -53,8 +64,21 @@ export type MonitorSummary = {
   targetUrl: string;
   interval: MonitorInterval;
   status: MonitorStatus;
+  lastCheckedAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type MonitorCheckSummary = {
+  id: string;
+  monitorId: string;
+  result: MonitorCheckResult;
+  failureReason: MonitorCheckFailureReason | null;
+  targetUrl: string;
+  httpStatusCode: number | null;
+  responseTimeMs: number;
+  checkedAt: string;
+  errorMessage: string | null;
 };
 
 export type CreateMonitorRequest = {
@@ -69,6 +93,15 @@ export type CreateMonitorResponse = {
 
 export type ListMonitorsResponse = {
   monitors: MonitorSummary[];
+};
+
+export type RunMonitorCheckResponse = {
+  monitor: MonitorSummary;
+  check: MonitorCheckSummary;
+};
+
+export type ListMonitorChecksResponse = {
+  checks: MonitorCheckSummary[];
 };
 
 export type AuthUserSummary = {

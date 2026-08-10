@@ -14,6 +14,23 @@ enum WorkspaceRole {
 
 enum MonitorStatus {
   PENDING
+  UP
+  DOWN
+}
+
+enum MonitorCheckResult {
+  UP
+  DOWN
+}
+
+enum MonitorCheckFailureReason {
+  HTTP_STATUS
+  TIMEOUT
+  DNS
+  CONNECTION
+  TLS
+  REDIRECT
+  BLOCKED_TARGET
 }
 
 model User {
@@ -34,32 +51,50 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members WorkspaceMember[]
+  members  WorkspaceMember[]
   monitors Monitor[]
 }
 
 model Monitor {
-  id        String        @id @default(uuid()) @db.Uuid
-  name      String
-  targetUrl String
-  interval  Int
-  status    MonitorStatus @default(PENDING)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id            String        @id @default(uuid()) @db.Uuid
+  name          String
+  targetUrl     String
+  interval      Int
+  status        MonitorStatus @default(PENDING)
+  lastCheckedAt DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  workspaceId String    @db.Uuid
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String         @db.Uuid
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id])
+  checks      MonitorCheck[]
 
   @@index([workspaceId])
 }
 
-model WorkspaceMember {
-  id          String   @id @default(uuid()) @db.Uuid
-  role        WorkspaceRole @default(OWNER)
-  createdAt   DateTime @default(now())
+model MonitorCheck {
+  id             String                     @id @default(uuid()) @db.Uuid
+  result         MonitorCheckResult
+  failureReason  MonitorCheckFailureReason?
+  targetUrl      String
+  httpStatusCode Int?
+  responseTimeMs Int
+  checkedAt      DateTime
+  errorMessage   String?
 
-  userId      String    @db.Uuid
-  user        User      @relation(fields: [userId], references: [id])
+  monitorId String  @db.Uuid
+  monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId, checkedAt(sort: Desc)])
+}
+
+model WorkspaceMember {
+  id        String        @id @default(uuid()) @db.Uuid
+  role      WorkspaceRole @default(OWNER)
+  createdAt DateTime      @default(now())
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
 
   workspaceId String    @db.Uuid
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
