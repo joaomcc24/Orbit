@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@orbit/types": "workspace:*",
     "@orbit/ui": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",

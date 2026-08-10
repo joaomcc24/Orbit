@@ -1,1 +1,107 @@
 # Orbit
+
+## Testing
+
+Run the fast unit tests, which isolate service logic with mocked dependencies:
+
+```bash
+pnpm test
+```
+
+Run the API integration tests against an isolated PostgreSQL database:
+
+```bash
+pnpm test:integration
+```
+
+No test environment file or manually exported variable is required. The runner
+sets these values for the migration and Jest processes:
+
+```text
+NODE_ENV=test
+DATABASE_URL=postgresql://orbit_test:orbit_test@127.0.0.1:5434/orbit_test?schema=public
+JWT_ACCESS_SECRET=orbit-integration-access-secret-at-least-32-characters
+```
+
+The Compose service separately defines `POSTGRES_USER=orbit_test`,
+`POSTGRES_PASSWORD=orbit_test`, and `POSTGRES_DB=orbit_test`. These are local,
+ephemeral test credentials, not production secrets.
+
+The integration command requires Docker. It starts the PostgreSQL service from
+`docker-compose.integration.yml` on port `5434`, applies the real Prisma
+migrations, runs the HTTP tests, and removes the container and temporary data.
+It never uses Orbit's development database on port `5433`.
+
+## Authentication
+
+Register or log in to receive a signed, 15-minute access token:
+
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Orbit Owner",
+  "email": "owner@example.com",
+  "password": "a-long-development-password"
+}
+```
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner@example.com",
+  "password": "a-long-development-password"
+}
+```
+
+Passwords must contain between 12 and 128 characters. Orbit stores a salted
+`scrypt` hash, never the original password. Protected requests send the access
+token as a bearer token:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+`GET /api/auth/me` verifies the token and returns its current user. The web app
+keeps the access token in memory. Refresh tokens, persistent sessions, email
+verification, and server-side logout/revocation are not implemented yet.
+
+## Monitor API
+
+The first monitor slice stores HTTP monitor configuration for a workspace. The
+authenticated user must be a member of the workspace identified by `slug`.
+
+Create a monitor:
+
+```http
+POST /api/workspaces/orbit-cloud-lab/monitors
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "name": "Orbit API",
+  "targetUrl": "https://api.example.com/health",
+  "interval": 60
+}
+```
+
+List the workspace's monitors:
+
+```http
+GET /api/workspaces/orbit-cloud-lab/monitors
+Authorization: Bearer <accessToken>
+```
+
+`interval` must be `30`, `60`, or `300` seconds, and `targetUrl` must use HTTP
+or HTTPS. The API assigns the workspace, timestamps, and the initial `PENDING`
+status. It does not run checks or simulate monitoring results yet.
+
+Workspace detail is protected by the same authenticated membership mechanism:
+
+```http
+GET /api/workspaces/orbit-cloud-lab
+Authorization: Bearer <accessToken>
+```

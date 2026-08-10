@@ -11,12 +11,18 @@ enum WorkspaceRole {
   ADMIN
   VIEWER
 }
+
+enum MonitorStatus {
+  PENDING
+}
+
 model User {
-  id        String   @id @default(uuid()) @db.Uuid
-  email     String   @unique
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  name         String
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   workspaceMemberships WorkspaceMember[]
 }
@@ -29,6 +35,22 @@ model Workspace {
   updatedAt DateTime @updatedAt
 
   members WorkspaceMember[]
+  monitors Monitor[]
+}
+
+model Monitor {
+  id        String        @id @default(uuid()) @db.Uuid
+  name      String
+  targetUrl String
+  interval  Int
+  status    MonitorStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  workspaceId String    @db.Uuid
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
 }
 
 model WorkspaceMember {

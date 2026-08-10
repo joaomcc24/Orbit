@@ -1,8 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  --orbit-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --orbit-serif: "Instrument Serif", Georgia, ui-serif, serif;
+  --orbit-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
   --background: 0 0% 100%;
   --foreground: 222 47% 11%;
   --muted: 210 20% 96%;
@@ -22,5 +27,186 @@ body {
   margin: 0;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--orbit-sans);
+}
+
+/* Orbit's monitoring surface is intentionally dark: it keeps the user's eye on
+   the state colours during an incident while violet remains a non-semantic,
+   product-level accent. */
+.orbit-console {
+  color-scheme: dark;
+  font-variant-numeric: tabular-nums;
+  isolation: isolate;
+  position: relative;
+}
+
+.orbit-console::before,
+.orbit-console::after {
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 0;
+}
+
+.orbit-console::before {
+  background-image:
+    linear-gradient(to right, #292f4d 1px, transparent 1px),
+    linear-gradient(to bottom, #292f4d 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 1100px 600px at 50% 0%, black 0%, black 30%, transparent 75%);
+  opacity: 0.18;
+  -webkit-mask-image: radial-gradient(ellipse 1100px 600px at 50% 0%, black 0%, black 30%, transparent 75%);
+}
+
+.orbit-console::after {
+  background: radial-gradient(ellipse 600px 350px at 50% -80px, rgb(113 101 255 / 0.14), transparent 65%);
+}
+
+.orbit-console > .flex {
+  position: relative;
+  z-index: 1;
+}
+
+.orbit-console .font-serif {
+  font-family: var(--orbit-serif);
+}
+
+.orbit-console .font-mono {
+  font-family: var(--orbit-mono);
+}
+
+.orbit-console .bg-white {
+  background-color: #101426;
+}
+
+.orbit-console .bg-white\/95 {
+  background-color: rgb(13 16 31 / 0.95);
+}
+
+.orbit-console .bg-\[\#f8fafc\] {
+  background-color: #0d1122;
+}
+
+.orbit-console .bg-\[\#101827\] {
+  background-color: #151935;
+}
+
+.orbit-console .border-\[\#d8dee8\],
+.orbit-console .border-\[\#e2e8f0\] {
+  border-color: #292f4d;
+}
+
+.orbit-console .border-\[\#eef2f7\] {
+  border-color: #202540;
+}
+
+.orbit-console .text-\[\#162033\] {
+  color: #f3f1ff;
+}
+
+.orbit-console .text-\[\#475569\] {
+  color: #c5c8dc;
+}
+
+.orbit-console .text-\[\#64748b\] {
+  color: #9499b3;
+}
+
+.orbit-console .text-\[\#94a3b8\] {
+  color: #878da8;
+}
+
+.orbit-console .text-\[\#cbd5e1\] {
+  color: #cfd2e5;
+}
+
+.orbit-console .bg-\[\#0f766e\] {
+  background-color: #7165ff;
+}
+
+.orbit-console .text-\[\#0f766e\] {
+  color: #a79fff;
+}
+
+.orbit-console .bg-\[\#eff6ff\] {
+  background-color: #171b3c;
+}
+
+.orbit-console .border-\[\#bfdbfe\] {
+  border-color: #3b4380;
+}
+
+.orbit-console .text-\[\#1d4ed8\],
+.orbit-console .text-\[\#2563eb\] {
+  color: #aaa4ff;
+}
+
+.orbit-console .bg-\[\#ecfdf3\] {
+  background-color: #0d2d28;
+}
+
+.orbit-console .ring-\[\#bbf7d0\] {
+  --tw-ring-color: #1f725e;
+}
+
+.orbit-console .text-\[\#15803d\] {
+  color: #34d399;
+}
+
+.orbit-console .bg-\[\#fffbeb\] {
+  background-color: #2e2614;
+}
+
+.orbit-console .ring-\[\#fde68a\] {
+  --tw-ring-color: #6d591a;
+}
+
+.orbit-console .text-\[\#b45309\] {
+  color: #fbbf24;
+}
+
+.orbit-console .bg-\[\#fef2f2\] {
+  background-color: #321923;
+}
+
+.orbit-console .border-\[\#fecaca\] {
+  border-color: #7f3445;
+}
+
+.orbit-console .ring-\[\#fecaca\] {
+  --tw-ring-color: #7f3445;
+}
+
+.orbit-console .text-\[\#dc2626\],
+.orbit-console .text-\[\#b91c1c\] {
+  color: #fb7185;
+}
+
+.orbit-console .bg-\[\#fff7ed\] {
+  background-color: #2c1e1b;
+}
+
+.orbit-console .border-\[\#fed7aa\] {
+  border-color: #75443b;
+}
+
+.orbit-console .bg-\[\#fed7aa\] {
+  background-color: #4b2b2c;
+}
+
+.orbit-console .border-\[\#fdba74\] {
+  border-color: #895143;
+}
+
+.orbit-console .text-\[\#9a3412\] {
+  color: #fbbf24;
+}
+
+.orbit-console .bg-\[\#9a3412\] {
+  background-color: #7065ff;
+}
+
+.orbit-console .bg-\[\#f1f5f9\] {
+  background-color: #1a1e32;
 }
