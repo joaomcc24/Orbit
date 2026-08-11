@@ -1,21 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bell, LogOut, RadioTower, Search } from 'lucide-react';
-import type { MonitorSummary } from '@orbit/types';
+import { Bell, LogOut, Play, Search } from 'lucide-react';
+import type {
+  ListMonitorChecksResponse,
+  MonitorSummary,
+  RunMonitorCheckResponse,
+} from '@orbit/types';
 import { MetricCard, StatusBadge, type StatusTone } from '@/components/orbit';
 import { OrbitApiError, orbitApi } from '@/lib/api';
 import { useWorkspace } from '@/components/workspaces/workspace-provider';
 import { WorkspaceSwitcher } from '@/components/workspaces/workspace-switcher';
 import { MonitorOverview } from './monitor-overview';
 import { NewMonitorDialog, type NewMonitorInput } from './new-monitor-dialog';
-import type { Monitor } from './types';
 import { SESSION_EXPIRED_MESSAGE, useAuth } from '@/components/auth/auth-provider';
 
 export function DashboardContent(): React.ReactNode {
   const { accessToken, logout, expireSession } = useAuth();
   const { activeWorkspace } = useWorkspace();
-  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [monitors, setMonitors] = useState<MonitorSummary[]>([]);
   const [isLoadingMonitors, setIsLoadingMonitors] = useState(false);
   const [monitorError, setMonitorError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -35,7 +38,7 @@ export function DashboardContent(): React.ReactNode {
 
     void orbitApi.listMonitors(activeWorkspace.slug, accessToken)
       .then((response) => {
-        if (!ignoreResult) setMonitors(response.monitors.map(monitorFromApi));
+        if (!ignoreResult) setMonitors(response.monitors);
       })
       .catch((caughtError) => {
         if (!ignoreResult) {
@@ -59,7 +62,7 @@ export function DashboardContent(): React.ReactNode {
 
     try {
       const response = await orbitApi.createMonitor(activeWorkspace.slug, accessToken, input);
-      const monitor = monitorFromApi(response.monitor);
+      const { monitor } = response;
       setMonitors((current) => [...current, monitor]);
       setAnnouncement(`${monitor.name} was saved to ${activeWorkspace.name} and is awaiting its first check.`);
     } catch (caughtError) {
@@ -72,13 +75,48 @@ export function DashboardContent(): React.ReactNode {
     }
   };
 
+  const loadMonitorChecks = async (monitor: MonitorSummary): Promise<ListMonitorChecksResponse> => {
+    if (!activeWorkspace || !accessToken) {
+      throw new Error('Choose a workspace before viewing monitor checks.');
+    }
+
+    try {
+      return await orbitApi.listMonitorChecks(activeWorkspace.slug, monitor.id, accessToken);
+    } catch (caughtError) {
+      if (caughtError instanceof OrbitApiError && caughtError.status === 401) {
+        expireSession();
+        throw new Error(SESSION_EXPIRED_MESSAGE);
+      }
+
+      throw caughtError;
+    }
+  };
+
+  const runMonitorCheck = async (monitor: MonitorSummary): Promise<RunMonitorCheckResponse> => {
+    if (!activeWorkspace || !accessToken) {
+      throw new Error('Choose a workspace before running a monitor check.');
+    }
+
+    try {
+      const response = await orbitApi.runMonitorCheck(activeWorkspace.slug, monitor.id, accessToken);
+      setMonitors((current) => current.map((item) => item.id === response.monitor.id ? response.monitor : item));
+      setAnnouncement(`${monitor.name} is ${response.check.result.toLowerCase()} after a manual check.`);
+      return response;
+    } catch (caughtError) {
+      if (caughtError instanceof OrbitApiError && caughtError.status === 401) {
+        expireSession();
+        throw new Error(SESSION_EXPIRED_MESSAGE);
+      }
+
+      throw caughtError;
+    }
+  };
+
   const hasWorkspace = Boolean(activeWorkspace);
-  const pendingCount = monitors.filter((monitor) => monitor.tone === 'neutral').length;
+  const pendingCount = monitors.filter((monitor) => monitor.status === 'PENDING').length;
   const metrics = [
     { label: 'Configured', value: hasWorkspace ? String(monitors.length) : '—', detail: hasWorkspace ? 'Saved in this workspace' : 'Choose a workspace first', tone: 'neutral' as StatusTone },
-    { label: 'Pending checks', value: hasWorkspace ? String(pendingCount) : '—', detail: 'A checker will activate these', tone: 'info' as StatusTone },
-    { label: 'Median latency', value: '—', detail: 'Available after checks run', tone: 'neutral' as StatusTone },
-    { label: 'Open incidents', value: '—', detail: 'Available after checks run', tone: 'neutral' as StatusTone },
+    { label: 'Awaiting first check', value: hasWorkspace ? String(pendingCount) : '—', detail: 'Run a manual HTTP check to update status', tone: 'info' as StatusTone },
   ];
 
   return (
@@ -113,18 +151,18 @@ export function DashboardContent(): React.ReactNode {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <StatusBadge tone={hasWorkspace ? 'info' : 'neutral'}>{hasWorkspace ? 'Workspace connected' : 'Workspace required'}</StatusBadge>
-              <h2 className="mt-3 max-w-2xl font-serif text-3xl font-medium leading-[1.05] tracking-[-0.035em] text-[#f3f1ff] sm:text-4xl">{hasWorkspace ? 'Your monitor configuration is ready.' : 'Start with a workspace.'}</h2>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[#64748b]">{hasWorkspace ? 'HTTP monitor configuration is saved through the Orbit API. Results will appear only after the check worker is built.' : 'Use the workspace switcher to create your first workspace.'}</p>
+              <h2 className="mt-3 max-w-2xl font-serif text-3xl font-medium leading-[1.05] tracking-[-0.035em] text-[#f3f1ff] sm:text-4xl">{hasWorkspace ? 'Run a check. See what happened.' : 'Start with a workspace.'}</h2>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-[#64748b]">{hasWorkspace ? 'Open a monitor to run one real HTTP check and inspect its saved result. Automatic scheduling is intentionally not enabled yet.' : 'Use the workspace switcher to create your first workspace.'}</p>
             </div>
             <div className="grid grid-cols-3 divide-x divide-[#e2e8f0] overflow-hidden rounded-md border border-[#e2e8f0] bg-[#f8fafc]">
               <MiniStat label="Workspace" value={activeWorkspace ? 'Connected' : 'None'} />
               <MiniStat label="Monitors" value={hasWorkspace ? String(monitors.length) : '—'} />
-              <MiniStat label="Checks" value="Pending" />
+              <MiniStat label="Manual checks" value="Ready" />
             </div>
           </div>
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-3 sm:grid-cols-2">
           {metrics.map((metric) => <MetricCard key={metric.label} {...metric} />)}
         </section>
 
@@ -135,39 +173,21 @@ export function DashboardContent(): React.ReactNode {
           error={monitorError}
           onRetry={() => setReloadKey((current) => current + 1)}
           emptyMessage={hasWorkspace ? 'No monitor configuration is saved in this workspace yet.' : 'Choose a workspace to load its monitor configuration.'}
+          onLoadChecks={loadMonitorChecks}
+          onRunCheck={runMonitorCheck}
         />
 
-        <CheckEnginePlaceholder />
+        <section className="flex flex-col gap-3 rounded-md border border-dashed border-[#292f4d] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#a79fff]">Manual checks</p>
+            <h2 className="mt-2 font-semibold text-[#162033]">Each result is persisted and belongs to its monitor.</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-[#64748b]">Open a monitor to run a single real check. Scheduling, alerts, and aggregate uptime remain future foundations rather than simulated dashboard data.</p>
+          </div>
+          <Play className="size-5 shrink-0 text-[#a79fff]" aria-hidden="true" />
+        </section>
       </div>
     </section>
   );
-}
-
-function monitorFromApi(monitor: MonitorSummary): Monitor {
-  return {
-    id: monitor.id,
-    name: monitor.name,
-    url: monitor.targetUrl,
-    status: 'Pending',
-    tone: 'neutral',
-    uptime: '—',
-    latency: '—',
-    interval: intervalLabel(monitor.interval),
-    checked: 'Awaiting first check',
-    type: 'HTTP',
-    ticks: Array.from({ length: 12 }, () => 'empty'),
-    regions: [
-      { code: 'iad', city: 'Washington', latency: 'Pending', tone: 'neutral' },
-      { code: 'ams', city: 'Amsterdam', latency: 'Pending', tone: 'neutral' },
-      { code: 'sin', city: 'Singapore', latency: 'Pending', tone: 'neutral' },
-    ],
-    responseTimes: [],
-  };
-}
-
-function intervalLabel(interval: number): string {
-  if (interval === 300) return '5m';
-  return `${interval}s`;
 }
 
 function messageFor(error: unknown): string {
@@ -177,21 +197,4 @@ function messageFor(error: unknown): string {
 
 function MiniStat({ label, value }: { label: string; value: string }): React.ReactNode {
   return <div className="min-w-0 px-3 py-2"><p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#64748b]">{label}</p><p className="mt-1 truncate text-sm font-semibold text-[#162033]">{value}</p></div>;
-}
-
-function CheckEnginePlaceholder(): React.ReactNode {
-  return (
-    <section className="grid gap-5 xl:grid-cols-2">
-      <div className="rounded-md border border-dashed border-[#292f4d] bg-white p-5">
-        <RadioTower className="size-5 text-[#a79fff]" aria-hidden="true" />
-        <h2 className="mt-3 font-semibold text-[#162033]">Check activity comes next</h2>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-[#64748b]">Orbit has real monitor configuration now. The next worker will make HTTP requests from check regions and write results here—without inventing uptime or latency before then.</p>
-      </div>
-      <div className="rounded-md border border-dashed border-[#292f4d] bg-white p-5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#a79fff]">Next foundation</p>
-        <h2 className="mt-3 font-semibold text-[#162033]">A scheduled check worker</h2>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-[#64748b]">It will claim due monitors, execute safe HTTP checks, persist measurements, and later drive the activity, regional, uptime, and incident views.</p>
-      </div>
-    </section>
-  );
 }

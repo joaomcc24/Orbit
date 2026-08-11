@@ -8,8 +8,10 @@ import type {
   GetCurrentUserResponse,
   LoginRequest,
   ListMonitorsResponse,
+  ListMonitorChecksResponse,
   ListWorkspacesResponse,
   RegisterRequest,
+  RunMonitorCheckResponse,
 } from '@orbit/types';
 
 const API_BASE_PATH = '/api/orbit';
@@ -144,6 +146,29 @@ export const orbitApi = {
     accessToken: string,
   ): Promise<ListMonitorsResponse> {
     return request(`/workspaces/${encodeURIComponent(workspaceSlug)}/monitors`, {
+      cache: 'no-store',
+      accessToken,
+    });
+  },
+
+  runMonitorCheck(
+    workspaceSlug: string,
+    monitorId: string,
+    accessToken: string,
+  ): Promise<RunMonitorCheckResponse> {
+    return request(`/workspaces/${encodeURIComponent(workspaceSlug)}/monitors/${encodeURIComponent(monitorId)}/checks`, {
+      method: 'POST',
+      accessToken,
+    });
+  },
+
+  listMonitorChecks(
+    workspaceSlug: string,
+    monitorId: string,
+    accessToken: string,
+    limit = 12,
+  ): Promise<ListMonitorChecksResponse> {
+    return request(`/workspaces/${encodeURIComponent(workspaceSlug)}/monitors/${encodeURIComponent(monitorId)}/checks?limit=${limit}`, {
       cache: 'no-store',
       accessToken,
     });
