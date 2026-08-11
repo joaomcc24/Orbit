@@ -49,8 +49,10 @@ Each job starts on a fresh GitHub-hosted Ubuntu runner, installs the frozen pnpm
 lockfile, and explicitly generates Prisma Client before using API types. The
 workflow grants its GitHub token read-only repository access and cancels an
 older run when a newer commit supersedes it on the same branch. Every external
-action is pinned to an immutable commit SHA, with the readable major version in
+action is pinned to an immutable commit SHA, with the readable release version in
 a comment, so an upstream tag cannot silently change the code CI executes.
+Dependabot checks those GitHub Actions pins weekly and proposes upgrades as
+reviewable pull requests instead of changing executable CI dependencies silently.
 
 The same commands can be run locally before pushing:
 
