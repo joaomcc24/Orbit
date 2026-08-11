@@ -300,6 +300,20 @@ describe('Monitor API with PostgreSQL', () => {
         },
       }),
     ).rejects.toBeDefined();
+
+    await expect(
+      prisma.monitorCheck.create({
+        data: {
+          monitorId: monitor.id,
+          result: 'DOWN',
+          failureReason: 'TIMEOUT',
+          targetUrl: `${targetBaseUrl}/healthy`,
+          httpStatusCode: 200,
+          responseTimeMs: 10,
+          checkedAt: new Date(),
+        },
+      }),
+    ).rejects.toBeDefined();
     await expect(prisma.monitorCheck.count()).resolves.toBe(0);
   });
 
