@@ -21,6 +21,8 @@ sets these values for the migration and Jest processes:
 NODE_ENV=test
 DATABASE_URL=postgresql://orbit_test:orbit_test@127.0.0.1:5434/orbit_test?schema=public
 JWT_ACCESS_SECRET=orbit-integration-access-secret-at-least-32-characters
+MONITOR_ALLOW_PRIVATE_TARGETS=true
+MONITOR_CHECK_TIMEOUT_MS=1000
 ```
 
 The Compose service separately defines `POSTGRES_USER=orbit_test`,
@@ -97,7 +99,7 @@ Authorization: Bearer <accessToken>
 
 `interval` must be `30`, `60`, or `300` seconds, and `targetUrl` must use HTTP
 or HTTPS. The API assigns the workspace, timestamps, and the initial `PENDING`
-status. It does not run checks or simulate monitoring results yet.
+status.
 
 Workspace detail is protected by the same authenticated membership mechanism:
 
@@ -105,3 +107,38 @@ Workspace detail is protected by the same authenticated membership mechanism:
 GET /api/workspaces/orbit-cloud-lab
 Authorization: Bearer <accessToken>
 ```
+
+## Manual monitor checks
+
+Run one real check for a configured monitor:
+
+```http
+POST /api/workspaces/orbit-cloud-lab/monitors/<monitorId>/checks
+Authorization: Bearer <accessToken>
+```
+
+List its newest check results, with a default limit of 20 and a maximum of 100:
+
+```http
+GET /api/workspaces/orbit-cloud-lab/monitors/<monitorId>/checks?limit=20
+Authorization: Bearer <accessToken>
+```
+
+Checks use `GET`, follow at most five redirects, and apply one total timeout
+across DNS resolution, redirects, and the final response. A final HTTP status
+from 200 through 399 is `UP`; other completed or expected network outcomes are
+`DOWN` with a structured failure reason. Orbit measures time to final response
+headers and never stores response bodies.
+
+Every hostname and redirect is resolved and pinned before connection. By
+default, loopback, private, link-local, metadata, and other non-public address
+ranges are blocked to prevent SSRF. Local development may explicitly set:
+
+```text
+MONITOR_ALLOW_PRIVATE_TARGETS=true
+MONITOR_CHECK_TIMEOUT_MS=10000
+```
+
+Private targets cannot be enabled when `NODE_ENV=production`. Automatic
+scheduling, retries, and distributed workers remain deliberately out of scope;
+the API executes a check only when the authenticated manual endpoint is called.

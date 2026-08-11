@@ -15,6 +15,8 @@ const testEnvironment = {
   ...process.env,
   DATABASE_URL: databaseUrl,
   JWT_ACCESS_SECRET: 'orbit-integration-access-secret-at-least-32-characters',
+  MONITOR_ALLOW_PRIVATE_TARGETS: 'true',
+  MONITOR_CHECK_TIMEOUT_MS: '1000',
   NODE_ENV: 'test',
 };
 
