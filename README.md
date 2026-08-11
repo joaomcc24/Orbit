@@ -48,7 +48,9 @@ push to `main`. Four independent jobs provide separate, parallel feedback:
 Each job starts on a fresh GitHub-hosted Ubuntu runner, installs the frozen pnpm
 lockfile, and explicitly generates Prisma Client before using API types. The
 workflow grants its GitHub token read-only repository access and cancels an
-older run when a newer commit supersedes it on the same branch.
+older run when a newer commit supersedes it on the same branch. Every external
+action is pinned to an immutable commit SHA, with the readable major version in
+a comment, so an upstream tag cannot silently change the code CI executes.
 
 The same commands can be run locally before pushing:
 
