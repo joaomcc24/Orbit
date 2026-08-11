@@ -140,6 +140,8 @@ does not overwrite another image's cache.
 This is the artifact-publication part of CD, not application deployment. The
 next provider-specific workflow will promote an already-published digest into a
 staging environment; it must not rebuild different bytes during deployment.
+The provider-neutral requirements for that environment are defined in
+[`docs/cloud-deployment-contract.md`](docs/cloud-deployment-contract.md).
 
 ## Authentication
 
