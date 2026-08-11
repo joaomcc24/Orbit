@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bell, LogOut, Play, Search } from 'lucide-react';
 import type {
   ListMonitorChecksResponse,
@@ -23,6 +23,7 @@ export function DashboardContent(): React.ReactNode {
   const [monitorError, setMonitorError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [announcement, setAnnouncement] = useState('');
+  const workspaceSlug = activeWorkspace?.slug;
 
   useEffect(() => {
     if (!activeWorkspace || !accessToken) {
@@ -75,13 +76,13 @@ export function DashboardContent(): React.ReactNode {
     }
   };
 
-  const loadMonitorChecks = async (monitor: MonitorSummary): Promise<ListMonitorChecksResponse> => {
-    if (!activeWorkspace || !accessToken) {
+  const loadMonitorChecks = useCallback(async (monitor: MonitorSummary): Promise<ListMonitorChecksResponse> => {
+    if (!workspaceSlug || !accessToken) {
       throw new Error('Choose a workspace before viewing monitor checks.');
     }
 
     try {
-      return await orbitApi.listMonitorChecks(activeWorkspace.slug, monitor.id, accessToken);
+      return await orbitApi.listMonitorChecks(workspaceSlug, monitor.id, accessToken);
     } catch (caughtError) {
       if (caughtError instanceof OrbitApiError && caughtError.status === 401) {
         expireSession();
@@ -90,15 +91,15 @@ export function DashboardContent(): React.ReactNode {
 
       throw caughtError;
     }
-  };
+  }, [accessToken, expireSession, workspaceSlug]);
 
-  const runMonitorCheck = async (monitor: MonitorSummary): Promise<RunMonitorCheckResponse> => {
-    if (!activeWorkspace || !accessToken) {
+  const runMonitorCheck = useCallback(async (monitor: MonitorSummary): Promise<RunMonitorCheckResponse> => {
+    if (!workspaceSlug || !accessToken) {
       throw new Error('Choose a workspace before running a monitor check.');
     }
 
     try {
-      const response = await orbitApi.runMonitorCheck(activeWorkspace.slug, monitor.id, accessToken);
+      const response = await orbitApi.runMonitorCheck(workspaceSlug, monitor.id, accessToken);
       setMonitors((current) => current.map((item) => item.id === response.monitor.id ? response.monitor : item));
       setAnnouncement(`${monitor.name} is ${response.check.result.toLowerCase()} after a manual check.`);
       return response;
@@ -110,7 +111,7 @@ export function DashboardContent(): React.ReactNode {
 
       throw caughtError;
     }
-  };
+  }, [accessToken, expireSession, workspaceSlug]);
 
   const hasWorkspace = Boolean(activeWorkspace);
   const pendingCount = monitors.filter((monitor) => monitor.status === 'PENDING').length;

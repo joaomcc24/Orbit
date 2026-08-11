@@ -39,16 +39,21 @@ export function MonitorOverview({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const drawerRef = useRef<HTMLElement | null>(null);
 
+  const closeMonitor = useCallback((): void => {
+    setSelectedMonitor(null);
+    window.setTimeout(() => triggerRef.current?.focus(), 0);
+  }, []);
+
   useEffect(() => {
     if (!selectedMonitor) return undefined;
 
     const closeOnEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') setSelectedMonitor(null);
+      if (event.key === 'Escape') closeMonitor();
     };
 
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [selectedMonitor]);
+  }, [closeMonitor, selectedMonitor]);
 
   useEffect(() => {
     if (selectedMonitor) drawerRef.current?.focus();
@@ -57,11 +62,6 @@ export function MonitorOverview({
   const openMonitor = (monitor: MonitorSummary, trigger: HTMLButtonElement): void => {
     triggerRef.current = trigger;
     setSelectedMonitor(monitor);
-  };
-
-  const closeMonitor = (): void => {
-    setSelectedMonitor(null);
-    window.setTimeout(() => triggerRef.current?.focus(), 0);
   };
 
   return (
@@ -345,7 +345,7 @@ function lastCheckLabel(checkedAt: string | null): string {
 }
 
 function statusLine(check: MonitorCheckSummary): string {
-  if (check.httpStatusCode) return `HTTP ${check.httpStatusCode}`;
+  if (check.httpStatusCode !== null) return `HTTP ${check.httpStatusCode}`;
   return check.result === 'UP' ? 'Request completed' : 'No HTTP response received';
 }
 
@@ -354,7 +354,10 @@ function failureLabel(reason: MonitorCheckSummary['failureReason']): string {
 }
 
 function relativeTime(value: string): string {
-  const seconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000));
+  const checkedAt = validDate(value);
+  if (!checkedAt) return 'Unknown time';
+
+  const seconds = Math.max(0, Math.round((Date.now() - checkedAt.getTime()) / 1000));
   if (seconds < 10) return 'Just now';
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
@@ -365,7 +368,15 @@ function relativeTime(value: string): string {
 }
 
 function fullDateTime(value: string): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(value));
+  const checkedAt = validDate(value);
+  if (!checkedAt) return 'Unknown time';
+
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' }).format(checkedAt);
+}
+
+function validDate(value: string): Date | null {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function messageFor(error: unknown, fallback: string): string {
