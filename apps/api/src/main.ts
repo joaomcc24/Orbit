@@ -22,4 +22,7 @@ async function bootstrap() {
   console.log(`API listening on port ${port}`);
 }
 
-bootstrap();
+bootstrap().catch((error: unknown) => {
+  console.error('API failed to start', error);
+  process.exit(1);
+});
