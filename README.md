@@ -34,6 +34,50 @@ The integration command requires Docker. It starts the PostgreSQL service from
 migrations, runs the HTTP tests, and removes the container and temporary data.
 It never uses Orbit's development database on port `5433`.
 
+## Production-like containers
+
+Build and start the application runtime locally:
+
+```bash
+docker compose -f docker-compose.runtime.yml up --build --wait
+```
+
+This stack is separate from the development and integration-test databases. It
+starts four roles in dependency order:
+
+1. `database` starts PostgreSQL and becomes healthy.
+2. `migration` applies committed Prisma migrations once, then exits successfully.
+3. `api` starts only after the migration job succeeds.
+4. `web` starts only after the API health check succeeds.
+
+The application is available at `http://localhost:3000`, and the API health
+endpoint is available at `http://localhost:3001/api/health`. The web server
+proxies browser API requests from `/api/orbit/*` to the API container using the
+private Compose service name. `ORBIT_API_URL` is therefore runtime
+configuration; a web image can move between environments without being rebuilt
+for each API address.
+
+Stop the stack while preserving its database volume:
+
+```bash
+docker compose -f docker-compose.runtime.yml down
+```
+
+To also delete this stack's local database data, add `--volumes`. The Compose
+defaults for `ORBIT_POSTGRES_PASSWORD` and `JWT_ACCESS_SECRET` are development
+conveniences only. A shared or hosted environment must inject strong values
+through its secret manager.
+
+The serving images run as a non-root user, drop Linux capabilities, prevent
+privilege escalation, and expose only the web and API ports on the host's
+loopback interface. PostgreSQL has no host port in this stack.
+
+This is a cloud-ready container foundation, not a cloud deployment. A real
+deployment still needs a container registry, a managed PostgreSQL service, a
+hosting platform, managed secrets, public HTTPS ingress, infrastructure as
+code, and a CD workflow. Those decisions should be made for one selected cloud
+provider rather than simulated inside this Compose file.
+
 ## Authentication
 
 Register or log in to receive a signed, 15-minute access token:
