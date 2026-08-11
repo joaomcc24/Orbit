@@ -55,10 +55,10 @@ describe('Monitor API with PostgreSQL', () => {
     });
     await new Promise<void>((resolve, reject) => {
       targetServer.once('error', reject);
-      targetServer.listen(0, '127.0.0.1', resolve);
+      targetServer.listen(0, 'localhost', resolve);
     });
     const targetAddress = targetServer.address() as AddressInfo;
-    targetBaseUrl = `http://127.0.0.1:${targetAddress.port}`;
+    targetBaseUrl = `http://localhost:${targetAddress.port}`;
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],

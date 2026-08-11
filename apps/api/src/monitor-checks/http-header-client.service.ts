@@ -17,7 +17,17 @@ export class HttpHeaderClientService {
     timeoutMs: number,
     configuredTimeoutMs: number,
   ): Promise<HeaderResponse> {
-    const lookup: LookupFunction = (_hostname, _options, callback) => {
+    const lookup: LookupFunction = (_hostname, options, callback) => {
+      if (options.all) {
+        callback(null, [
+          {
+            address: target.address,
+            family: target.family,
+          },
+        ]);
+        return;
+      }
+
       callback(null, target.address, target.family);
     };
     const transport = target.url.protocol === 'https:' ? https : http;
