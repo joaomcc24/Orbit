@@ -78,6 +78,38 @@ hosting platform, managed secrets, public HTTPS ingress, infrastructure as
 code, and a CD workflow. Those decisions should be made for one selected cloud
 provider rather than simulated inside this Compose file.
 
+## Container image pipeline
+
+`.github/workflows/container-images.yml` gives the runtime images an automated
+release path. Pull requests that change application or container inputs build
+the `api`, `web`, and `migration` targets without publishing them. This proves
+that a proposed change remains containerizable without giving pull-request code
+registry write access.
+
+After a merge to `main`, the workflow publishes these packages to GitHub
+Container Registry:
+
+```text
+ghcr.io/joaomcc24/orbit-api
+ghcr.io/joaomcc24/orbit-web
+ghcr.io/joaomcc24/orbit-migration
+```
+
+Each image receives a full Git commit SHA tag. `main` also updates the
+convenience tag `latest`; a tag such as `v1.2.3` additionally publishes `1.2.3`
+and `1.2`. Deployments should pin the full SHA tag or image digest instead of
+`latest`, so the exact artifact can be identified and rolled back.
+
+Only the publication job receives `packages: write`, and it authenticates with
+GitHub's short-lived workflow token rather than a stored registry password.
+The published images include OCI source/revision labels, an SBOM, and build
+provenance. The Docker build cache is separated by image target so one image
+does not overwrite another image's cache.
+
+This is the artifact-publication part of CD, not application deployment. The
+next provider-specific workflow will promote an already-published digest into a
+staging environment; it must not rebuild different bytes during deployment.
+
 ## Authentication
 
 Register or log in to receive a signed, 15-minute access token:
