@@ -1,19 +1,12 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { NextConfig } from 'next';
 
-// The browser talks to this stable, same-origin path. Next forwards it to the
-// API, which avoids a development-only CORS setup and keeps the upstream URL
-// private to the web deployment.
-const orbitApiUrl = (process.env.ORBIT_API_URL ?? 'http://localhost:3001/api').replace(/\/$/, '');
+const projectDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: '/api/orbit/:path*',
-        destination: `${orbitApiUrl}/:path*`,
-      },
-    ];
-  },
+  output: 'standalone',
+  outputFileTracingRoot: path.join(projectDirectory, '../..'),
 };
 
 export default nextConfig;

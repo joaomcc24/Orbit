@@ -1,0 +1,76 @@
+name: orbit-runtime
+
+x-api-environment: &api-environment
+  DATABASE_URL: postgresql://orbit:${ORBIT_POSTGRES_PASSWORD:-orbit-local-password}@database:5432/orbit?schema=public
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-orbit-local-container-secret-change-before-production}
+  MONITOR_ALLOW_PRIVATE_TARGETS: "false"
+  MONITOR_CHECK_TIMEOUT_MS: "10000"
+  NODE_ENV: production
+
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: orbit
+      POSTGRES_PASSWORD: ${ORBIT_POSTGRES_PASSWORD:-orbit-local-password}
+      POSTGRES_USER: orbit
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbit -d orbit"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+    volumes:
+      - orbit-runtime-data:/var/lib/postgresql/data
+
+  migration:
+    image: orbit-migration:local
+    build:
+      context: .
+      target: migration
+    environment: *api-environment
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: orbit-api:local
+    build:
+      context: .
+      target: api
+    environment: *api-environment
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    init: true
+    ports:
+      - "127.0.0.1:${ORBIT_API_PORT:-3001}:3001"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  web:
+    image: orbit-web:local
+    build:
+      context: .
+      target: web
+    environment:
+      ORBIT_API_URL: http://api:3001/api
+    depends_on:
+      api:
+        condition: service_healthy
+    init: true
+    ports:
+      - "127.0.0.1:${ORBIT_WEB_PORT:-3000}:3000"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  orbit-runtime-data:

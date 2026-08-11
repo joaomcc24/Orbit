@@ -6,8 +6,8 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "outDir": "./dist",
-    "rootDir": ".",
+    "rootDir": "./src",
   },
-  "include": ["src/**/*", "prisma.config.ts", "prisma/**/*.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
