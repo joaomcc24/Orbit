@@ -19,7 +19,7 @@ sets these values for the migration and Jest processes:
 
 ```text
 NODE_ENV=test
-DATABASE_URL=postgresql://orbit_test:orbit_test@127.0.0.1:5434/orbit_test?schema=public
+DATABASE_URL=postgresql://orbit_test:orbit_test@127.0.0.1:<assigned-port>/orbit_test?schema=public
 JWT_ACCESS_SECRET=orbit-integration-access-secret-at-least-32-characters
 MONITOR_ALLOW_PRIVATE_TARGETS=true
 MONITOR_CHECK_TIMEOUT_MS=1000
@@ -29,10 +29,12 @@ The Compose service separately defines `POSTGRES_USER=orbit_test`,
 `POSTGRES_PASSWORD=orbit_test`, and `POSTGRES_DB=orbit_test`. These are local,
 ephemeral test credentials, not production secrets.
 
-The integration command requires Docker. It starts the PostgreSQL service from
-`docker-compose.integration.yml` on port `5434`, applies the real Prisma
-migrations, runs the HTTP tests, and removes the container and temporary data.
-It never uses Orbit's development database on port `5433`.
+The integration command requires Docker. It gives each invocation a unique
+Compose project and a Docker-assigned localhost port, starts PostgreSQL from
+`docker-compose.integration.yml`, applies the real Prisma migrations, runs the
+HTTP tests, and removes only that invocation's container and temporary data.
+Parallel test runs therefore cannot share or tear down one another's database,
+and the runner never uses Orbit's development database on port `5433`.
 
 ## Continuous Integration
 
@@ -81,12 +83,17 @@ starts four roles in dependency order:
 3. `api` starts only after the migration job succeeds.
 4. `web` starts only after the API health check succeeds.
 
-The application is available at `http://localhost:3000`, and the API health
-endpoint is available at `http://localhost:3001/api/health`. The web server
-proxies browser API requests from `/api/orbit/*` to the API container using the
-private Compose service name. `ORBIT_API_URL` is therefore runtime
-configuration; a web image can move between environments without being rebuilt
-for each API address.
+The application is available at `http://localhost:3000`. The API exposes
+dependency-free liveness at `http://localhost:3001/api/health/live` and
+database-backed readiness at `http://localhost:3001/api/health/ready`.
+`/api/health` remains a compatibility alias for readiness. The image's default
+health check uses liveness, while this Compose stack overrides it with readiness
+so the web service starts only after the API can use PostgreSQL.
+
+The web server proxies browser API requests from `/api/orbit/*` to the API
+container using the private Compose service name. `ORBIT_API_URL` is therefore
+runtime configuration; a web image can move between environments without being
+rebuilt for each API address.
 
 Stop the stack while preserving its database volume:
 
@@ -140,6 +147,8 @@ does not overwrite another image's cache.
 This is the artifact-publication part of CD, not application deployment. The
 next provider-specific workflow will promote an already-published digest into a
 staging environment; it must not rebuild different bytes during deployment.
+The provider-neutral requirements for that environment are defined in
+[`docs/cloud-deployment-contract.md`](docs/cloud-deployment-contract.md).
 
 ## Authentication
 
