@@ -23,6 +23,7 @@ Orbit already has:
 - non-root API and web processes with dropped Linux capabilities locally;
 - runtime configuration for the web-to-API address;
 - a production-like Compose stack with ordered health and migration gates;
+- separate dependency-free liveness and database-backed readiness endpoints;
 - CI jobs for static analysis, unit tests, production builds, and isolated
   PostgreSQL integration tests;
 - pull-request container builds that never receive registry write access; and
@@ -34,8 +35,7 @@ Orbit does not yet have:
 - infrastructure as code for a shared environment;
 - workload-identity authentication from GitHub to a cloud provider;
 - a managed PostgreSQL instance or managed secret store;
-- a deployment workflow, traffic promotion, or automated smoke test;
-- separate liveness and readiness endpoints; or
+- a deployment workflow, traffic promotion, or automated smoke test; or
 - production monitoring, alerting, backup verification, and a recovery drill.
 
 ## Runtime Topology
@@ -128,7 +128,7 @@ application validation.
    still a required implementation step.
 7. Run the migration image as a one-shot job and wait for exit code zero.
 8. Create an API revision without sending public traffic to it.
-9. Wait for API readiness, then create the web revision against that API.
+9. Wait for `/api/health/ready`, then create the web revision against that API.
 10. Run same-origin smoke checks through the web ingress.
 11. Promote traffic to the healthy revisions and record the release.
 12. Keep the previous healthy revisions available for a bounded rollback window.
@@ -154,17 +154,19 @@ stays in place.
 
 ## Health and Rollback Contract
 
-The current API `/api/health` response checks database connectivity, so it is a
-readiness signal: an instance should not receive requests when it cannot serve
-database-backed behavior. The current web root can act as an initial readiness
-signal.
+The API exposes two explicit platform signals:
 
-Before production, Orbit should separate:
+- `/api/health/live` proves that the process can answer without querying
+  PostgreSQL. Platforms may use it to decide whether a container must restart.
+- `/api/health/ready` queries PostgreSQL before returning success. Platforms
+  must use it to decide whether an API revision can receive traffic.
 
-- liveness: the process and event loop are alive, without depending on
-  PostgreSQL; and
-- readiness: the instance can serve real requests, including required database
-  connectivity.
+`/api/health` remains a compatibility alias for readiness and `/api/health/ping`
+remains a compatibility alias for liveness. The API image's default Docker
+health check uses liveness. The production-like Compose stack overrides that
+check with readiness because its `web` startup gate must wait for a usable API.
+A cloud platform should configure both probes explicitly rather than infer both
+meanings from the image's single Docker health check.
 
 This separation prevents a temporary database outage from causing every API
 container to restart simultaneously. A failed deployment must stop traffic
@@ -202,7 +204,8 @@ demonstrate all of the following:
 - a release deploys exact image digests after a successful migration;
 - a deliberately failing migration prevents application promotion;
 - readiness failure prevents traffic promotion without causing a restart loop;
-- a smoke test reaches `/api/health` through the web's same-origin proxy;
+- a smoke test reaches `/api/orbit/health/ready` through the web's same-origin
+  proxy;
 - the previous application revision can be restored without rebuilding;
 - database backup retention is configured and a restore procedure is recorded;
 - logs and metrics identify the deployed Git revision; and

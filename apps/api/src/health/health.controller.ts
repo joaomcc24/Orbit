@@ -6,15 +6,25 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
-  check(): Promise<{ status: 'ok'; database: 'ok'; timestamp: string }> {
+  readiness(): Promise<{ status: 'ok'; database: 'ok'; timestamp: string }> {
     return this.healthService.check();
   }
 
-  @Get('ping')
-  ping(): { status: 'ok'; timestamp: string } {
+  @Get('ready')
+  ready(): Promise<{ status: 'ok'; database: 'ok'; timestamp: string }> {
+    return this.healthService.check();
+  }
+
+  @Get('live')
+  live(): { status: 'ok'; timestamp: string } {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
     };
+  }
+
+  @Get('ping')
+  ping(): { status: 'ok'; timestamp: string } {
+    return this.live();
   }
 }
