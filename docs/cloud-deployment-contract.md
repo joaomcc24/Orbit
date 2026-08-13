@@ -1,7 +1,9 @@
 # Orbit Cloud Deployment Contract
 
-Status: Proposed  
-Scope: First shared staging environment, provider-neutral  
+Status: Proposed
+
+Scope: First shared staging environment, provider-neutral
+
 Last reviewed: 2026-08-11
 
 ## Purpose
