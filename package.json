@@ -2,6 +2,7 @@
   "name": "orbit",
   "private": true,
   "scripts": {
+    "build": "pnpm -r build",
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",
     "lint": "pnpm -r lint",

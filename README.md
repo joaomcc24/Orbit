@@ -34,6 +34,37 @@ The integration command requires Docker. It starts the PostgreSQL service from
 migrations, runs the HTTP tests, and removes the container and temporary data.
 It never uses Orbit's development database on port `5433`.
 
+## Continuous Integration
+
+GitHub Actions runs `.github/workflows/ci.yml` for every pull request and every
+push to `main`. Four independent jobs provide separate, parallel feedback:
+
+- `Static analysis` runs lint, TypeScript checks, and Prisma schema validation.
+- `Unit tests` runs the fast Jest suites with mocked dependencies.
+- `Production builds` compiles the Nest API and Next.js web application.
+- `PostgreSQL integration tests` starts the disposable Compose database,
+  applies every migration, and runs the API integration suites.
+
+Each job starts on a fresh GitHub-hosted Ubuntu runner, installs the frozen pnpm
+lockfile, and explicitly generates Prisma Client before using API types. The
+workflow grants its GitHub token read-only repository access and cancels an
+older run when a newer commit supersedes it on the same branch. Every external
+action is pinned to an immutable commit SHA, with the readable release version in
+a comment, so an upstream tag cannot silently change the code CI executes.
+Dependabot checks those GitHub Actions pins weekly and proposes upgrades as
+reviewable pull requests instead of changing executable CI dependencies silently.
+
+The same commands can be run locally before pushing:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm prisma:validate
+pnpm test
+pnpm build
+pnpm test:integration
+```
+
 ## Production-like containers
 
 Build and start the application runtime locally:
